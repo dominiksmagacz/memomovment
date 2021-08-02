@@ -1,0 +1,784 @@
+using CSharp_MetaBots.ExcelMetabot;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using Microsoft.Office.Interop.Excel;
+
+namespace ING_USBI.ZRPA_.DS_Memomovement {
+	class Program {
+		static void Main(string[] args) {
+			string date = Microsoft.VisualBasic.Interaction.InputBox("Wpisz datę w formacie DDMMRRRR", "Our Reference", "");
+			
+			int codClassAccount;
+			double bufor;
+			double balancePLN;
+
+			Microsoft.Office.Interop.Excel.Application excelApp = new Microsoft.Office.Interop.Excel.Application();
+
+			Excel ebonusIBH = new Excel(true);
+//			ebonusIBH.Show();
+			ebonusIBH.Open(@"C:/Users/HC33CL/Downloads/bonus_IBH_" + date.Remove(0, 2) + "_v1.xlsx"); 	//Open goal file of bonus IBH
+			//			ebonusIBH.Open(@"C:/Users/HC33CL/Downloads/SOLVER_majatek_" + date.Remove(0, 2) + "_v1.xls"); 	//Open goal file of bonus IBH
+			//			ebonusIBH.Open(@"C:/Users/HC33CL/Downloads/Lease_majatek_" + date.Remove(0, 2) + "_v1.xlsx"); 	//Open goal file of bonus IBH
+
+			Excel eIBH = new Excel(true);
+//			eIBH.Show();
+			eIBH.Open(@"C:/Users/HC33CL/Downloads/IBH_" + date + ".xlsx"); 			//Open IBH source file
+			int rowIBH = 2;
+			//						int wiersz = eIBH.GetLastUsedRow();
+			//						int kolumna = eIBH.GetLastUsedColumn();
+			//________________________________________________-
+			ebonusIBH.ActivateSheet("bonus_uzg");
+			string nrAccount;
+						while (ebonusIBH.GetValue(rowIBH, 1) != "") 
+						{
+							nrAccount = ebonusIBH.GetValue(rowIBH, 1);
+							eIBH.ActivateSheet("page");
+							string cell;
+							int rowbonusIBH = 2;
+							codClassAccount = 0;
+							bufor = 0d;
+							balancePLN = 0d;
+							while (eIBH.GetValue(rowbonusIBH, 12) != "") 
+							{
+								//cell = eIBH.GetValue(rowbonusIBH, 12);
+								if (eIBH.GetValue(rowbonusIBH, 12) == nrAccount) 
+								{
+									codClassAccount = Int32.Parse(eIBH.GetValue(rowbonusIBH, 10));
+									if (codClassAccount == 1) 
+									{
+										bufor = double.Parse(eIBH.GetValue(rowbonusIBH, 4).Replace('.', ','));
+										balancePLN -= bufor;
+									}
+									else if (codClassAccount == 2) 
+									{
+										bufor = double.Parse(eIBH.GetValue(rowbonusIBH, 4).Replace('.', ','));
+										balancePLN += bufor;
+									}
+									else continue ;
+									rowbonusIBH++;
+								}
+								else
+									rowbonusIBH++;
+							}
+							ebonusIBH.ActivateSheet("bonus_uzg");
+							ebonusIBH.SetValue(rowIBH, 7, balancePLN.ToString());
+							rowIBH++;
+						}
+			ebonusIBH.Save();
+			ebonusIBH.Quit();
+//			eIBH.Quit();
+						
+//			Excel eIBHmajatek = new Excel(false);
+////			eIBHmajatek.Show();
+//			eIBHmajatek.Open(@"C:/Users/HC33CL/Downloads/IBH_majatek_"+date+"_v1.xlsx");	//Open goal file of IBH majatek	
+	
+	
+			eIBH.ActivateSheet("page");
+			var worksheet = eIBH.GetExcelWorksheetObject();
+			var workbook = eIBH.GetExcelWorkbookObject();
+	
+			//var IBHRange = worksheet.Range["R1C1", "R" + row + "C" + col];
+			var IBHRange = worksheet.Range["A1","Z466"];
+
+			//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   tutaj zakomentowałem 
+
+			Microsoft.Office.Interop.Excel.Application oApp;
+			//			Microsoft.Office.Interop.Excel.Worksheet oSheet;
+			Microsoft.Office.Interop.Excel.Workbook oBook;
+
+
+			//___________________________________________________________________________
+
+
+			oApp = new Application();
+			oApp.Visible = true;
+			oBook = oApp.Workbooks.Open(@"C:/Users/HC33CL/Downloads/IBH_" + date + ".xlsx");
+
+			Worksheet dataSheet = (Worksheet) oBook.Worksheets["page"];
+			int row = dataSheet.UsedRange.Rows.Count;
+			int col = dataSheet.UsedRange.Columns.Count;
+			System.Console.WriteLine(row + " " + col);
+			Range startCell = (Range) dataSheet.Cells[1, 1];
+			Range endCell = (Range) dataSheet.Cells[row, col];
+
+			Range myRange = dataSheet.Range[startCell, endCell];
+
+
+			Worksheet pivotSheet = (Worksheet) oBook.Sheets.Add(After: oBook.Sheets[oBook.Sheets.Count]);
+			pivotSheet.Name = "pivot";
+
+			PivotCache oPivotCache = (PivotCache) oBook.PivotCaches().Add(XlPivotTableSourceType.xlDatabase, myRange);
+
+
+			var pivotTables = (PivotTables) pivotSheet.PivotTables();
+			PivotTable oPivotTable = pivotTables.Add(oPivotCache, pivotSheet.Cells[1, 1], "PivotTable1");
+
+			PivotField filter = (PivotField) oPivotTable.PivotFields("Pk Snpt Date Id");
+			filter.Orientation = XlPivotFieldOrientation.xlPageField;
+			filter.Name = "Pk Snpt Date Id";
+
+			PivotField column = (PivotField) oPivotTable.PivotFields("GL Acct Class.Sk Gl Acct Class Code");
+			column.Orientation = XlPivotFieldOrientation.xlColumnField;
+			column.Name = "GL Acct Class.Sk Gl Acct Class Code";
+
+			PivotField oPivotField = (PivotField) oPivotTable.PivotFields("GL acct.Sk Gnrl Ledger Acct Nr");
+			oPivotField.Orientation = XlPivotFieldOrientation.xlRowField;
+			oPivotField.Name = " GL acct.Sk Gnrl Ledger Acct Nr";
+
+
+			PivotField values = (PivotField) oPivotTable.PivotFields("Cls Balance Pln");
+			values.Orientation = XlPivotFieldOrientation.xlDataField;
+			values.Function = XlConsolidationFunction.xlSum;
+			values.Name = " Cls Balance Pln";
+
+
+			Workbook eIBHmajatek = (Workbook) excelApp.ActiveWorkbook;
+			eIBHmajatek = oApp.Workbooks.Open(@"C:/Users/HC33CL/Downloads/IBH_majatek_" + date + "_v1.xlsx");
+			Worksheet sheetAmortyzacjaeIBHMajatek = (Worksheet) eIBHmajatek.Worksheets["amortyzacja"];
+			Worksheet sheetTemplateIBHmajatek = (Worksheet) eIBHmajatek.Worksheets["Template"];
+
+			pivotSheet.Copy(sheetAmortyzacjaeIBHMajatek);
+			eIBH.Open(@"C:/Users/HC33CL/Downloads/IBH_" + date + ".xlsx");
+			eIBH.ActivateSheet("page");
+			eIBHmajatek.Save();
+			eIBHmajatek.Close();
+
+
+						//			eIBH.ActivateSheet("page");
+
+						eIBH.ActivateSheet("page");
+						//buffor = endCell.ToString();
+
+						Excel eIBHmajatek2 = new Excel(true);
+//						eIBHmajatek2.Show();
+						eIBHmajatek2.Open(@"C:/Users/HC33CL/Downloads/IBH_majatek_" + date + "_v1.xlsx"); 			//Open IBH source file
+						eIBHmajatek2.ActivateSheet("Template");
+
+
+						//			int rowMajatek = eIBHmajatek2.GetLastUsedRow();
+						int colMajatek = eIBHmajatek2.GetLastUsedColumn();
+
+						int i;
+						for ( i = 2; i<colMajatek -1; )
+						//			while (eIBHmajatek2.GetValue(6, i) != "")
+						{
+							eIBH.ActivateSheet("page");
+							rowIBH = 2;
+							balancePLN = 0d;
+							bufor = 0d;
+							codClassAccount = 0;
+							nrAccount = eIBHmajatek2.GetValue(6, i);
+							//				System.Console.WriteLine("pierwszy while");
+							while (eIBH.GetValue(rowIBH, 12) != "") {
+								//					System.Console.WriteLine(eIBHmajatek2.GetValue(6, i)+"drugi while" + nrAccount);
+								//					System.Console.WriteLine(nrAccount+"   " + eIBH.GetValue(rowIBH,12));
+								//					System.Console.ReadKey();
+								if (eIBH.GetValue(rowIBH, 12) == nrAccount) {
+									codClassAccount = 0;
+									codClassAccount = Int32.Parse(eIBH.GetValue(rowIBH, 10));
+
+									//						System.Console.WriteLine("pierwszy if");
+									if (codClassAccount == 1) {
+										bufor = double.Parse(eIBH.GetValue(rowIBH, 4).Replace('.', ','));
+										balancePLN += bufor;
+										codClassAccount = 0;
+									}
+									else if (codClassAccount == 2) {
+										bufor = double.Parse(eIBH.GetValue(rowIBH, 4).Replace('.', ','));
+										balancePLN -= bufor;
+										codClassAccount = 0;
+									}
+									else continue ;
+									rowIBH++;
+								}
+								else
+									rowIBH++;
+								//					System.Console.WriteLine(bufor + "   " + balancePLN);
+								//					i++; //do usunięcia
+							}
+							eIBHmajatek2.ActivateSheet("Template");
+							eIBHmajatek2.SetValue(25, i, balancePLN);
+							i++;
+						}
+
+						for ( i = 2; i<colMajatek -1; )
+						//			while (eIBHmajatek2.GetValue(6, i) != "")
+						{
+							eIBH.ActivateSheet("page");
+							rowIBH = 2;
+							balancePLN = 0d;
+							bufor = 0d;
+							codClassAccount = 0;
+							nrAccount = eIBHmajatek2.GetValue(27, i);
+							//				System.Console.WriteLine("pierwszy while");
+							while (eIBH.GetValue(rowIBH, 12) != "") {
+								//					System.Console.WriteLine(eIBHmajatek2.GetValue(6, i)+"drugi while" + nrAccount);
+								//					System.Console.WriteLine(nrAccount+"   " + eIBH.GetValue(rowIBH,12));
+								//					System.Console.ReadKey();
+								if (eIBH.GetValue(rowIBH, 12) == nrAccount) {
+									codClassAccount = 0;
+									codClassAccount = Int32.Parse(eIBH.GetValue(rowIBH, 10));
+
+									//						System.Console.WriteLine("pierwszy if");
+									if (codClassAccount == 2) {
+										bufor = double.Parse(eIBH.GetValue(rowIBH, 4).Replace('.', ','));
+										balancePLN += bufor;
+										codClassAccount = 0;
+									}
+									else if (codClassAccount == 1) {
+										bufor = double.Parse(eIBH.GetValue(rowIBH, 4).Replace('.', ','));
+										balancePLN -= bufor;
+										codClassAccount = 0;
+									}
+									else continue ;
+									rowIBH++;
+								}
+								else
+									rowIBH++;
+								//					System.Console.WriteLine(bufor + "   " + balancePLN);
+								//					i++; //do usunięcia
+							}
+							eIBHmajatek2.ActivateSheet("Template");
+							eIBHmajatek2.SetValue(42, i, balancePLN);
+							i++;
+						}
+						eIBHmajatek2.Save();
+						eIBHmajatek2.Quit();
+						eIBH.Save();
+						eIBH.Quit();
+						//			System.Console.WriteLine(colMajatek+" "+rowMajatek);
+			//			//------------------------------------------DO tej pory OK	DLA IBH	 Tutaj wszystko zakomentowane 
+
+
+
+
+
+		
+						Excel ebonusCF = new Excel(true);
+			//			ebonusCF.Show();
+						ebonusCF.Open(@"C:/Users/HC33CL/Downloads/bonus_CF_" + date.Remove(0, 2) + "_v1.xlsx"); 	//Open goal file of bonus IBH
+			
+						Excel eGL = new Excel(true);
+//						eGL.Show();
+						eGL.Open(@"C:/Users/HC33CL/Downloads/GL all _" + date + ".xlsx"); 			//Open IBH source file
+						int rowBonus = 2;
+			//			int row = eGL.GetLastUsedRow();
+			//			int col = eGL.GetLastUsedColumn();
+			//________________________________________________-
+						ebonusCF.ActivateSheet("CF");
+						while (ebonusCF.GetValue(rowBonus, 1) != "") {
+							nrAccount = ebonusCF.GetValue(rowBonus, 1);
+							eGL.ActivateSheet("page");
+
+							int rowGL = 2;
+							codClassAccount = 0;
+							bufor = 0d;
+							balancePLN = 0d;
+
+											while (eGL.GetValue(rowGL, 4) != "") 
+											{
+												//cell = eGL.GetValue(rowGL, 12);
+												if (eGL.GetValue(rowGL, 4) == nrAccount) 
+												{
+													if (eGL.GetValue(rowGL, 2) == "ING_CF")
+														{
+														codClassAccount = Int32.Parse(eGL.GetValue(rowGL, 3));
+														if (codClassAccount == 1) 
+														{
+															bufor = double.Parse(eGL.GetValue(rowGL, 5).Replace('.', ','));
+															balancePLN -= bufor;
+														}
+														else if (codClassAccount == 2) 
+														{
+															bufor = double.Parse(eGL.GetValue(rowGL, 5).Replace('.', ','));
+															balancePLN += bufor;
+														}
+													else continue ;
+													rowGL++;
+														}
+														else rowGL++;
+												}
+												else
+													rowGL++;
+											}
+											ebonusCF.ActivateSheet("CF");
+											ebonusCF.SetValue(rowBonus, 8, balancePLN);
+											rowBonus++;
+
+
+
+
+
+
+						}
+//						ebonusCF.Show();
+						ebonusCF.Save();
+						ebonusCF.Quit();
+						eGL.Quit();
+			//___________________________________________TUTAJ KOŃCZE PLIK BONUS CF i zaczynam robić PIVOTA w GL
+
+
+			oApp.Visible = true;
+			oBook = oApp.Workbooks.Open(@"C:/Users/HC33CL/Downloads/GL all _" + date + ".xlsx");
+
+			Worksheet glSheet = (Worksheet) oBook.Worksheets["page"];
+			row = glSheet.UsedRange.Rows.Count;
+			col = glSheet.UsedRange.Columns.Count;
+			startCell = (Range) glSheet.Cells[1, 1];
+			endCell = (Range) glSheet.Cells[row, col];
+
+			myRange = glSheet.Range[startCell, endCell];
+
+
+			pivotSheet = (Worksheet) oBook.Sheets.Add(After: oBook.Sheets[oBook.Sheets.Count]);
+			pivotSheet.Name = "pivot";
+
+			oPivotCache = (PivotCache) oBook.PivotCaches().Add(XlPivotTableSourceType.xlDatabase, myRange);
+
+
+			pivotTables = (PivotTables) pivotSheet.PivotTables();
+			oPivotTable = pivotTables.Add(oPivotCache, pivotSheet.Cells[1, 1], "PivotTable1");
+
+
+			filter = (PivotField) oPivotTable.PivotFields("Pk Sbdr Src Code");
+			filter.Orientation = XlPivotFieldOrientation.xlPageField;
+			filter.Name = "Pk Sbdr Src Code";
+			PivotField filter2 = (PivotField) oPivotTable.PivotFields("GL acct.Sk Gnrl Ledger Curr Code");
+			filter2.Orientation = XlPivotFieldOrientation.xlPageField;
+			filter2.Name = "GL acct.Sk Gnrl Ledger Curr Code";
+			PivotField filter3 = (PivotField) oPivotTable.PivotFields("Pk Snp Date Id");
+			filter3.Orientation = XlPivotFieldOrientation.xlPageField;
+			filter3.Name = "Pk Snp Date Id";
+
+
+			column = (PivotField) oPivotTable.PivotFields("GL Acct Class.Sk Gl Acct Class Code");
+			column.Orientation = XlPivotFieldOrientation.xlColumnField;
+			column.Name = "GL Acct Class.Sk Gl Acct Class Code";
+
+
+			oPivotField = (PivotField) oPivotTable.PivotFields("GL acct.Sk Gnrl Ledger Acct Nr");
+			oPivotField.Orientation = XlPivotFieldOrientation.xlRowField;
+			oPivotField.Name = " GL acct.Sk Gnrl Ledger Acct Nr";
+			PivotField oPivotField2 = (PivotField) oPivotTable.PivotFields("Pk Sbdr Gl Acct Nr");
+			oPivotField2.Orientation = XlPivotFieldOrientation.xlRowField;
+			oPivotField2.Name = " Pk Sbdr Gl Acct Nr";
+
+
+			values = (PivotField) oPivotTable.PivotFields("Cls Balance Pln");
+			values.Orientation = XlPivotFieldOrientation.xlDataField;
+			values.Function = XlConsolidationFunction.xlSum;
+			values.Name = " Cls Balance Pln";
+
+
+			Workbook eCFHmajatek = (Workbook) excelApp.ActiveWorkbook;
+			eCFHmajatek = oApp.Workbooks.Open(@"C:/Users/HC33CL/Downloads/CF_majatek_" + date.Remove(0, 2) + "_v1.xlsx");
+			sheetTemplateIBHmajatek = (Worksheet) eCFHmajatek.Worksheets["Template"];
+			sheetAmortyzacjaeIBHMajatek = (Worksheet) eCFHmajatek.Worksheets["amortyzacja"];
+
+			colMajatek = sheetTemplateIBHmajatek.UsedRange.Columns.Count;
+
+			pivotSheet.Copy(sheetAmortyzacjaeIBHMajatek);
+			eCFHmajatek.Save();
+			eCFHmajatek.Close();
+
+
+			Excel eMajatekCF = new Excel(true);
+//			eMajatekCF.Show();
+			eMajatekCF.Open(@"C:/Users/HC33CL/Downloads/CF_majatek_" + date.Remove(0, 2) + "_v1.xlsx"); 	//Open goal file of bonus IBH
+
+//			eGL.Show();
+			eGL.Open(@"C:/Users/HC33CL/Downloads/GL all _" + date + ".xlsx"); 			//Open GL source file
+
+			//int colMajatek = eCFHmajatek.GetLastUsedColumn();
+			i = 2;
+
+//			//while(eMajatekCF.GetValue(6,i) != "" && i < colMajatek){
+			eMajatekCF.ActivateSheet("Template");
+			while (i < colMajatek) {
+
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				nrAccount = eMajatekCF.GetValue(6, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValue(rowGL, 9);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "ING_CF") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 1) {
+								bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+								balancePLN += bufor;
+								codClassAccount = 0;
+							}
+							else if (codClassAccount == 2) {
+								bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+								balancePLN -= bufor;
+								codClassAccount = 0;
+							}
+						}
+					}
+					rowGL++;
+				}
+				eMajatekCF.ActivateSheet("Template");
+				eMajatekCF.SetValue(25, i, balancePLN);
+				i++;
+			}
+
+			i = 2;
+			while (i < colMajatek) {
+
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				nrAccount = eMajatekCF.GetValue(27, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValue(rowGL, 9);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "ING_CF") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 1) {
+								bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+								balancePLN += bufor;
+								codClassAccount = 0;
+							}
+							else if (codClassAccount == 2) {
+								bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+								balancePLN -= bufor;
+								codClassAccount = 0;
+							}
+						}
+					}
+					rowGL++;
+				}
+				eMajatekCF.ActivateSheet("Template");
+				eMajatekCF.SetValue(42, i, balancePLN);
+				i++;
+			}
+			eMajatekCF.Save();
+			eMajatekCF.Quit();
+
+
+			//		---------------------------------------Zaczynamy SOLVER
+			Workbook esolver = (Workbook) excelApp.ActiveWorkbook;
+			esolver = oApp.Workbooks.Open(@"C:/Users/HC33CL/Downloads/SOLVER_majatek_" + date.Remove(0, 2) + "_v1.xls"); 	//Open goal file of bonus IBH
+			Worksheet sheetAmortyzacjaSolver = (Worksheet) esolver.Worksheets["amortyzacja"];
+			Worksheet sheetTemplateSolver = (Worksheet) esolver.Worksheets["Template"];
+
+			int colSolverMajatek = sheetTemplateSolver.UsedRange.Columns.Count;
+
+			//			pivotSheet.Copy(  sheetAmortyzacjaSolver);
+			//			eIBH.Open(@"C:/Users/HC33CL/Downloads/IBH_" + date + ".xlsx");
+			//			eIBH.ActivateSheet("page");
+			//			esolver.Save();
+			//			esolver.Close();
+
+			Excel eSolverMajatek = new Excel(true);
+//			eSolverMajatek.Show();
+			eSolverMajatek.Open(@"C:/Users/HC33CL/Downloads/SOLVER_majatek_" + date.Remove(0, 2) + "_v1.xls"); 	//Open goal file of bonus IBH
+
+			i = 2;
+			eSolverMajatek.ActivateSheet("Template");
+			while (i< colSolverMajatek) {
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				eSolverMajatek.ActivateSheet("Template");
+				nrAccount = eSolverMajatek.GetValue(6, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValue(rowGL, 9);
+					
+//					System.Console.WriteLine(nrAccount +"  "+ checkAccount);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "SOLVER") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 1) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN += bufor;
+									codClassAccount = 0;
+								}
+								else if (codClassAccount == 2) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN -= bufor;
+									codClassAccount = 0;
+								
+							}
+						}
+					}
+					rowGL++;
+				}
+				eSolverMajatek.ActivateSheet("Template");
+				eSolverMajatek.SetValue(25, i, balancePLN);
+				i++;
+			}
+			
+				i = 2;
+			while (i< colSolverMajatek) {
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				eSolverMajatek.ActivateSheet("Template");
+				nrAccount = eSolverMajatek.GetValueText(27, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValueText(rowGL, 9);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "SOLVER") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 1) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN += bufor;
+									codClassAccount = 0;
+								}
+								else if (codClassAccount == 2) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN -= bufor;
+									codClassAccount = 0;
+							}
+						}
+					}
+					rowGL++;
+				}
+				eSolverMajatek.ActivateSheet("Template");
+				eSolverMajatek.SetValue(42, i, balancePLN);
+				i++;
+			}
+			eSolverMajatek.Save();
+			eSolverMajatek.Quit();
+			
+			//			---------------------------------------Zaczynamy Lease
+			Excel ebonusLP = new Excel(true);
+//			ebonusLP.Show();
+			ebonusLP.Open(@"C:/Users/HC33CL/Downloads/bonus_LP_" + date.Remove(0, 2) + "_v1.xlsx"); 	//Open goal file of bonus IBH
+
+			i = 2;
+			while(ebonusLP.GetValueText(i, 2) != ""){
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				ebonusLP.ActivateSheet("LP");
+				nrAccount = ebonusLP.GetValueText(i, 2);
+//				nrAccount = nrAccount.Substring(0, 6);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValueText(rowGL, 9);
+//					System.Console.WriteLine(nrAccount +"  "+ checkAccount);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "ING_LP") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							System.Console.WriteLine(codClassAccount);
+							if (codClassAccount == 1) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN -= bufor;
+									codClassAccount = 0;
+								}
+								else if (codClassAccount == 2) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN += bufor;
+									codClassAccount = 0;
+							}
+						}
+					}
+					rowGL++;
+				}
+				ebonusLP.ActivateSheet("LP");
+				ebonusLP.SetValue(i, 8, balancePLN);
+				i++;
+			}
+			ebonusLP.Save();
+			ebonusLP.Quit();
+			
+			Excel eLeaseMajatek = new Excel(true);
+//			eLeaseMajatek.Show();
+			eLeaseMajatek.Open(@"C:/Users/HC33CL/Downloads/Lease_majatek_" + date.Remove(0, 2) + "_v1.xlsx"); 	//Open goal file of bonus IBH
+			
+			Workbook eLeasemajatek2 = (Workbook) excelApp.ActiveWorkbook;
+			eLeasemajatek2 = oApp.Workbooks.Open(@"C:/Users/HC33CL/Downloads/Lease_majatek_" + date.Remove(0, 2) + "_v1.xlsx");
+			Worksheet sheetTemplateLeasemajatek = (Worksheet) eLeasemajatek2.Worksheets["Template"];
+			Worksheet sheetAmortyzacjaeLeaseMajatek = (Worksheet) eLeasemajatek2.Worksheets["amortyzacja"];
+			colMajatek = sheetTemplateLeasemajatek.UsedRange.Columns.Count;
+			
+			//Tutaj brakuje kopi pivota 
+
+			i = 2;
+			eLeaseMajatek.ActivateSheet("Template");
+			while (i< colMajatek) {
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				eLeaseMajatek.ActivateSheet("Template");
+				nrAccount = eLeaseMajatek.GetValue(6, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValue(rowGL, 9);
+					if( checkAccount[0] == '0'){
+						checkAccount = checkAccount.Remove(0, 1);
+					}
+//					System.Console.WriteLine(nrAccount +"  "+ checkAccount);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "ING_LP") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 1) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN += bufor;
+									codClassAccount = 0;
+								}
+								else if (codClassAccount == 2) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN -= bufor;
+									codClassAccount = 0;
+							}
+						}
+					}
+					rowGL++;
+				}
+				eLeaseMajatek.ActivateSheet("Template");
+				eLeaseMajatek.SetValue(25, i, balancePLN);
+				i++;
+			}
+			i = 2;
+			while (i< colMajatek) {
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				eLeaseMajatek.ActivateSheet("Template");
+				nrAccount = eLeaseMajatek.GetValue(27, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValue(rowGL, 9);
+					if( checkAccount[0] == '0'){
+						checkAccount = checkAccount.Remove(0, 1);
+					}
+//					System.Console.WriteLine(nrAccount +"  "+ checkAccount);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "ING_LP") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 2) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN += bufor;
+									codClassAccount = 0;
+								}
+								else if (codClassAccount == 1) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN -= bufor;
+									codClassAccount = 0;
+							}
+						}
+					}
+					rowGL++;
+				}
+				eLeaseMajatek.ActivateSheet("Template");
+				eLeaseMajatek.SetValue(42, i, balancePLN);
+				i++;
+			}
+			eLeaseMajatek.Save();
+			eLeaseMajatek.Quit();
+			
+			Excel eNUMajatek = new Excel(true);
+//			eNUMajatek.Show();
+			eNUMajatek.Open(@"C:/Users/HC33CL/Downloads/NU_majatek_" + date.Remove(0, 2) + "_v1.xlsx"); 	//Open goal file of bonus IBH
+
+			Workbook eNUMajatek2 = (Workbook) excelApp.ActiveWorkbook;
+			eNUMajatek2 = oApp.Workbooks.Open(@"C:/Users/HC33CL/Downloads/NU_majatek_" + date.Remove(0, 2) + "_v1.xlsx");
+			Worksheet sheetTemplateNUMajatek = (Worksheet) eNUMajatek2.Worksheets["Template"];
+			Worksheet sheetAmortyzacjaeNUMajatek = (Worksheet) eNUMajatek2.Worksheets["amortyzacja"];
+			colMajatek = sheetTemplateNUMajatek.UsedRange.Columns.Count;
+
+			
+			i = 2;
+			eNUMajatek.ActivateSheet("Template");
+			while (i< colMajatek) {
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				eNUMajatek.ActivateSheet("Template");
+				nrAccount = eNUMajatek.GetValue(6, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValue(rowGL, 9);
+//					if( checkAccount[0] == '0'){
+//						checkAccount = checkAccount.Remove(0, 1);
+//					}
+//					System.Console.WriteLine(nrAccount +"  "+ checkAccount);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "NU") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 1) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN += bufor;
+									codClassAccount = 0;
+								}
+								else if (codClassAccount == 2) {
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN -= bufor;
+									codClassAccount = 0;
+
+							}
+						}
+					}
+					rowGL++;
+				}
+				eNUMajatek.ActivateSheet("Template");
+				eNUMajatek.SetValue(25, i, balancePLN);
+				i++;
+			}
+			i = 2;
+			while (i< colMajatek) {
+				balancePLN = 0d;
+				bufor = 0d;
+				codClassAccount = 0;
+				eNUMajatek.ActivateSheet("Template");
+				nrAccount = eNUMajatek.GetValue(27, i);
+				eGL.ActivateSheet("page");
+				int rowGL = 2;
+				while (eGL.GetValue(rowGL, 9) != "") {
+					string checkAccount = eGL.GetValue(rowGL, 9);
+//					if( checkAccount[0] == '0'){
+//						checkAccount = checkAccount.Remove(0, 1);
+//					}
+//					System.Console.WriteLine(nrAccount +"  "+ checkAccount);
+					if (nrAccount.Contains(checkAccount)) {
+						if (eGL.GetValue(rowGL, 2) == "NU") {
+							codClassAccount = Int32.Parse(eGL.GetValueText(rowGL, 3));
+							if (codClassAccount == 2) {
+									System.Console.WriteLine("3 if");
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN += bufor;
+									System.Console.WriteLine("drugi if");
+									codClassAccount = 0;
+								}
+								else if (codClassAccount == 1) {
+									System.Console.WriteLine("3 else if");
+									bufor = double.Parse(eGL.GetValueText(rowGL, 5).Replace('.', ','));
+									balancePLN -= bufor;
+									System.Console.WriteLine("drugi esle if");
+									codClassAccount = 0;
+							}
+						}
+					}
+					rowGL++;
+				}
+				eNUMajatek.ActivateSheet("Template");
+				eNUMajatek.SetValue(42, i, balancePLN);
+				i++;
+			}
+			eNUMajatek.Save();
+			eNUMajatek.Quit();
+        }
+    }
+}
