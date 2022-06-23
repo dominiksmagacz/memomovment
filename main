@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using Microsoft.Office.Interop.Excel;
 
-namespace ING_USBI.ZRPA_.DS_Memomovement {
+namespace Memo {
 	class Program {
 		static void Main(string[] args) {
 			string date = Microsoft.VisualBasic.Interaction.InputBox("Wpisz datę w formacie DDMMRRRR", "Our Reference", "");
